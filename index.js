@@ -1,65 +1,56 @@
-import TelegramBot from 'node-telegram-bot-api';
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
 
-const token = process.env.BOT_TOKEN;
-const ADMIN_ID = 1351518213;
+const TOKEN = process.env.BOT_TOKEN;
+const ADMIN_ID = Number(process.env.ADMIN_ID);
 
-console.log("Bot is starting...");
-console.log("Token exists:", !!token);
+if (!TOKEN || !ADMIN_ID) {
+  console.error('يرجى ضبط المتغيرين BOT_TOKEN و ADMIN_ID في إعدادات الاستضافة');
+  process.exit(1);
+}
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-// عرض أخطاء Telegram
-bot.on("polling_error", (err) => {
-  console.error("Polling Error:", err.message);
+// سيرفر بسيط لإبقاء الخدمة نشطة (مطلوب لبعض الاستضافات المجانية)
+const app = express();
+app.get('/', (req, res) => res.send('Bot is running ✅'));
+app.listen(process.env.PORT || 3000);
+
+// رسالة الترحيب عند /start
+bot.onText(/^\/start/, (msg) => {
+  if (msg.chat.id === ADMIN_ID) return;
+  bot.sendMessage(
+    msg.chat.id,
+    'مرحباً بك 👋\nأرسل رسالتك وسيتم الرد عليك في أقرب وقت.'
+  );
 });
 
-// حفظ الربط بين رسالة الأدمن والمستخدم
-const replies = new Map();
+bot.on('message', async (msg) => {
+  // تجاهل أمر /start لأنه معالج فوق
+  if (msg.text && msg.text.startsWith('/start')) return;
 
-// عند وصول أي رسالة
-bot.on("message", async (msg) => {
-  console.log("وصلت رسالة من:", msg.chat.id, msg.text);
-
-  const chatId = msg.chat.id;
-
-  // إذا كانت الرسالة منك
-  if (chatId === ADMIN_ID) {
-    if (msg.reply_to_message) {
-      const targetId = replies.get(msg.reply_to_message.message_id);
-
-      if (targetId) {
-        await bot.sendMessage(targetId, msg.text);
-        console.log("تم إرسال الرد للمستخدم");
+  // حالة 1: أنت (الأدمن) ترد على رسالة محوّلة من شخص -> نرسل ردك له
+  if (msg.chat.id === ADMIN_ID) {
+    if (msg.reply_to_message && msg.reply_to_message.forward_from) {
+      const targetId = msg.reply_to_message.forward_from.id;
+      try {
+        await bot.copyMessage(targetId, msg.chat.id, msg.message_id);
+      } catch (e) {
+        bot.sendMessage(
+          ADMIN_ID,
+          '⚠️ تعذر إرسال الرد (ربما المستخدم حظر البوت). التفاصيل: ' + e.message
+        );
       }
     }
     return;
   }
 
-  // رسالة الترحيب
-  await bot.sendMessage(
-    chatId,
-    `أهلًا وسهلًا
-
-اكتب استفسارك، وبإذن الله سأرد عليك في أقرب وقت.`
-  );
-
-  // تحويل الرسالة لك
-  const forwarded = await bot.sendMessage(
-    ADMIN_ID,
-    ` رسالة جديدة
-
- الاسم: ${msg.from.first_name || "بدون اسم"}
-
- ID: ${chatId}
-
- الرسالة:
-${msg.text || "[ليست رسالة نصية]"}`
-  );
-
-  // حفظ الربط
-  replies.set(forwarded.message_id, chatId);
-
-  console.log("تم تحويل الرسالة للأدمن");
+  // حالة 2: أي شخص آخر يرسل رسالة -> تُحوَّل لك
+  try {
+    await bot.forwardMessage(ADMIN_ID, msg.chat.id, msg.message_id);
+  } catch (e) {
+    console.log('forward error:', e.message);
+  }
 });
 
-console.log("🔥🔥 NEW VERSION 🔥🔥");
+console.log('Bot started ✅');
