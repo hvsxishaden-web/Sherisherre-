@@ -38,7 +38,7 @@ bot.on("message", async (msg) => {
   // رسالة الترحيب
   await bot.sendMessage(
     chatId,
-    `أهلًا وسهلًا 🌷
+    `أهلًا وسهلًا
 
 اكتب استفسارك، وبإذن الله سأرد عليك في أقرب وقت.`
   );
@@ -46,12 +46,13 @@ bot.on("message", async (msg) => {
   // تحويل الرسالة لك
   const forwarded = await bot.sendMessage(
     ADMIN_ID,
-    `📩 رسالة جديدة
+    ` رسالة جديدة
 
-👤 الاسم: ${msg.from.first_name || "بدون اسم"}
-🆔 ID: ${chatId}
+ الاسم: ${msg.from.first_name || "بدون اسم"}
 
-💬 الرسالة:
+ ID: ${chatId}
+
+ الرسالة:
 ${msg.text || "[ليست رسالة نصية]"}`
   );
 
@@ -61,4 +62,4 @@ ${msg.text || "[ليست رسالة نصية]"}`
   console.log("تم تحويل الرسالة للأدمن");
 });
 
-console.log("Bot is running...");
+console.log("🔥🔥 NEW VERSION 🔥🔥");
