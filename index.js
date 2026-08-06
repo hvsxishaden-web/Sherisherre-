@@ -9,7 +9,23 @@ if (!TOKEN || !ADMIN_ID) {
   process.exit(1);
 }
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN, { polling: false });
+
+// نمسح أي Webhook قديم قبل ما نبدأ الـ Polling (مهم لو البوت استخدم سابقاً مع n8n أو أي خدمة ويبهوك)
+bot.deleteWebHook()
+  .then(() => {
+    console.log('تم مسح أي Webhook قديم ✅');
+    bot.startPolling();
+  })
+  .catch((err) => {
+    console.log('خطأ بمسح الـ Webhook:', err.message);
+    bot.startPolling();
+  });
+
+// نطبع أي خطأ يصير أثناء الـ Polling بدل ما ينكتم
+bot.on('polling_error', (err) => {
+  console.log('Polling error:', err.code, err.message);
+});
 
 // سيرفر بسيط لإبقاء الخدمة نشطة (مطلوب لبعض الاستضافات المجانية)
 const app = express();
